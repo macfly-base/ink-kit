@@ -1,5 +1,6 @@
 name: PR Checks
 on: [pull_request]
+
 jobs:
   install_modules:
     runs-on: ubuntu-latest
@@ -14,16 +15,11 @@ jobs:
           cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Add pnpm store path to env var
-        id: pnpm-cache
-        shell: bash
-        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
       - name: Cache node modules
         uses: actions/cache@v4
         with:
           path: |
-            ${{ steps.pnpm-cache.outputs.STORE_PATH }}
-            **/node_modules
+            ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
@@ -32,9 +28,8 @@ jobs:
     needs: install_modules
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/base-setup
-        name: Base Setup
+      - name: Base Setup
+        uses: ./.github/actions/base-setup
       - name: Run linting
         run: pnpm run lint
 
@@ -42,9 +37,8 @@ jobs:
     needs: install_modules
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/base-setup
-        name: Base Setup
+      - name: Base Setup
+        uses: ./.github/actions/base-setup
       - name: Run formatting
         run: pnpm run format:check
 
@@ -52,15 +46,14 @@ jobs:
     needs: install_modules
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/base-setup
-        name: Base Setup
+      - name: Base Setup
+        uses: ./.github/actions/base-setup
       - name: Debug Environment Variables
         run: env
-      - name: Building app
+      - name: Build app
         run: pnpm run build
       - name: Cache build
-        uses: actions/cache/save@v4
+        uses: actions/cache@v4
         with:
           path: apps/web/.next
-          key: ${{ runner.os }}-build-store-${{ hashFiles('./apps/web/src') }}
+          key: ${{ runner.os }}-build-store-${{ hashFiles('apps/web/src/**/*') }}
