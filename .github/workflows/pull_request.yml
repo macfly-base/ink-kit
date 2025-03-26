@@ -1,3 +1,4 @@
+
 name: PR Checks
 on:
   pull_request:
@@ -19,15 +20,14 @@ jobs:
           cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Add pnpm store path to env var
+      - name: Cache pnpm store
         id: pnpm-cache
-        shell: bash
-        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
       - name: Cache node modules
-        uses: actions/cache/save@v4
+        uses: actions/cache@v3
         with:
           path: |
-            ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+            ${{ env.STORE_PATH }}
             **/node_modules
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
 
@@ -60,10 +60,10 @@ jobs:
         name: Base Setup
       - name: Debug Environment Variables
         run: env
-      - name: Building app
+      - name: Build app
         run: pnpm run build
       - name: Cache build
-        uses: actions/cache/save@v4
+        uses: actions/cache@v3
         with:
           path: apps/web/.next
           key: ${{ runner.os }}-build-store-${{ hashFiles('./apps/web/src') }}
@@ -73,25 +73,20 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
           tags: ghcr.io/inkonchain/ink-kit:latest
-
       - name: Log out from GitHub Container Registry
         run: docker logout ghcr.io
